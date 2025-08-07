@@ -28,6 +28,10 @@ const collaborations = require("./api/collaborations");
 const CollaborationsService = require("./services/postgres/collaborationsService");
 const validatorCollaborations = require("./validator/collaborations");
 
+const _exports = require("./api/exports");
+const ProducerService = require("./services/amqplib/ProducerService");
+const validatorExports = require("./validator/exports");
+
 const init = async () => {
 	const albumsService = new AlbumsService(pool);
 	const songsService = new SongsService(pool);
@@ -35,6 +39,7 @@ const init = async () => {
 	const authenticationsService = new AuthenticationsService(pool);
 	const collaborationsService = new CollaborationsService(pool);
 	const playlistService = new PlaylistService(pool, collaborationsService);
+	const producerService = ProducerService;
 
 	const server = Hapi.server({
 		port: process.env.PORT,
@@ -114,6 +119,14 @@ const init = async () => {
 				playlistService,
 				usersService,
 				validator: validatorCollaborations,
+			},
+		},
+		{
+			plugin: _exports,
+			options: {
+				playlistService,
+				producerService,
+				validator: validatorExports,
 			},
 		},
 	]);
