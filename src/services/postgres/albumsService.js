@@ -1,4 +1,5 @@
 const { createAlbumId } = require("../../utils/nanoId");
+const { mapDBAlbumsToModel } = require("../../utils");
 const NotFoundError = require("../../utils/exceptions/NotFoundError");
 const InvariantError = require("../../utils/exceptions/InvariantError");
 
@@ -27,9 +28,10 @@ class AlbumsService {
 		const query = {
 			text: `
 				SELECT
-					albums.id,
-					albums.name,
-					albums.year,
+					a.id,
+					a.name,
+					a.year,
+					a.cover_url,
 				COALESCE(
 						JSON_AGG(
 								JSON_BUILD_OBJECT('id', songs.id, 'title', songs.title, 'performer', songs.performer)
@@ -37,13 +39,13 @@ class AlbumsService {
 						'[]'::json
 				) AS songs
 				FROM
-						albums
+						albums AS a
 				LEFT JOIN
-						songs ON songs.album_id = albums.id
+						songs ON songs.album_id = a.id
 				WHERE
-						albums.id = $1
+						a.id = $1
 				GROUP BY
-						albums.id;
+						a.id;
 			`,
 			values: [id],
 		};
@@ -54,7 +56,7 @@ class AlbumsService {
 			throw new NotFoundError("Album tidak ditemukan");
 		}
 
-		return result.rows[0];
+		return result.rows.map(mapDBAlbumsToModel)[0];
 	}
 
 	async editAlbumById(id, { name, year }) {
@@ -80,6 +82,19 @@ class AlbumsService {
 
 		if (!result.rows.length) {
 			throw new NotFoundError("Album gagal dihapus. Id tidak ditemukan");
+		}
+	}
+
+	async addCoverAlbum(albumId, coverUrl) {
+		const query = {
+			text: "UPDATE albums SET cover_url = $1 WHERE id = $2 RETURNING id",
+			values: [coverUrl, albumId],
+		};
+
+		const result = await this._pool.query(query);
+
+		if (!result.rows.length) {
+			throw new NotFoundError("Cover gagal ditambahkan");
 		}
 	}
 }

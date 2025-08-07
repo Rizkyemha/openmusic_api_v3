@@ -1,11 +1,14 @@
 require("dotenv").config();
+const path = require("path");
 const Hapi = require("@hapi/hapi");
 const pool = require("./utils/database");
 const Jwt = require("@hapi/jwt");
+const Inert = require("@hapi/inert");
 
 const albums = require("./api/albums");
 const AlbumsService = require("./services/postgres/albumsService");
 const validatorAlbums = require("./validator/albums");
+const StorageService = require("./services/storage/storageService");
 
 const songs = require("./api/songs");
 const SongsService = require("./services/postgres/songsService");
@@ -33,7 +36,9 @@ const ProducerService = require("./services/amqplib/ProducerService");
 const validatorExports = require("./validator/exports");
 
 const init = async () => {
+	const albumsFolder = path.resolve(__dirname, "api/albums/images/covers");
 	const albumsService = new AlbumsService(pool);
+	const storageService = new StorageService(albumsFolder);
 	const songsService = new SongsService(pool);
 	const usersService = new UsersService(pool);
 	const authenticationsService = new AuthenticationsService(pool);
@@ -54,6 +59,9 @@ const init = async () => {
 	await server.register([
 		{
 			plugin: Jwt,
+		},
+		{
+			plugin: Inert,
 		},
 	]);
 
@@ -78,6 +86,7 @@ const init = async () => {
 			plugin: albums,
 			options: {
 				service: albumsService,
+				storage: storageService,
 				validator: validatorAlbums,
 			},
 		},
@@ -133,6 +142,8 @@ const init = async () => {
 
 	server.ext("onPreResponse", (request, h) => {
 		const { response } = request;
+
+		console.log(response.message);
 
 		if (response instanceof Error) {
 			if (!response.isServer) {
