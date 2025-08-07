@@ -35,9 +35,12 @@ const _exports = require("./api/exports");
 const ProducerService = require("./services/amqplib/ProducerService");
 const validatorExports = require("./validator/exports");
 
+const CacheService = require("./services/redis/CacheService");
+
 const init = async () => {
 	const albumsFolder = path.resolve(__dirname, "api/albums/images/covers");
-	const albumsService = new AlbumsService(pool);
+	const cacheService = new CacheService();
+	const albumsService = new AlbumsService(pool, cacheService);
 	const storageService = new StorageService(albumsFolder);
 	const songsService = new SongsService(pool);
 	const usersService = new UsersService(pool);
@@ -142,8 +145,6 @@ const init = async () => {
 
 	server.ext("onPreResponse", (request, h) => {
 		const { response } = request;
-
-		console.log(response.message);
 
 		if (response instanceof Error) {
 			if (!response.isServer) {

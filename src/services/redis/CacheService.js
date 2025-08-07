@@ -8,7 +8,9 @@ class CacheService {
 			},
 		});
 
-		this._client.on("error", (error) => console.error(error));
+		this._client.on("error", (error) => {
+			throw new Error(error);
+		});
 
 		this._client.connect();
 	}
